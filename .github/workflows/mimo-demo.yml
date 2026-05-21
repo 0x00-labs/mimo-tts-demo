@@ -1,0 +1,83 @@
+name: MIMO TTS Multi-Voice Demo
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+env:
+  MIMO_BASE: https://token-plan-sgp.xiaomimimo.com/v1
+  BWS_PROJECT: df3e9d60-9921-4a25-b68d-b451012a3723
+
+jobs:
+  tts:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - voice: 茉莉
+            text: "你好，欢迎体验小米 MiMo 语音合成技术。我是茉莉，这是我的标准中文女声。"
+          - voice: 冰糖
+            text: "大家好！我是冰糖，我的声音甜美活泼，适合讲故事和温馨的对话。很高兴认识你！"
+          - voice: 苏打
+            text: "你好，我是苏打。我的声音清脆明亮，适合新闻播报和有声读物。"
+          - voice: 白桦
+            text: "你好，我是白桦。我的声音沉稳浑厚，适合旁白解说和正式场合的语音表达。"
+          - voice: Mia
+            text: "Hi there! I'm Mia, an English female voice. I sound natural and friendly, perfect for conversational applications."
+          - voice: Chloe
+            text: "Hello! This is Chloe speaking. My voice is warm and clear, ideal for narration and audiobooks."
+          - voice: Milo
+            text: "Hey, I'm Milo! I'm an English male voice with a confident and energetic tone. Great for announcements and presentations."
+          - voice: Dean
+            text: "Greetings, I'm Dean. My voice is deep and professional, suitable for corporate presentations and e-learning content."
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install bws
+        run: |
+          curl -fsSL https://github.com/bitwarden/sdk-sm/releases/download/bws-v1.1.1/bws-x86_64-unknown-linux-gnu-1.1.1.zip -o bws.zip
+          sudo unzip -o bws.zip -d /usr/local/bin && rm bws.zip
+
+      - name: Generate ${{ matrix.voice }} audio
+        run: |
+          KEY=$(bws secret list "$BWS_PROJECT" | python3 -c "import sys,json; s=json.load(sys.stdin); print([x['value'] for x in s if x['key']=='MIMO_API_KEY'][0])")
+          mkdir -p audio
+          curl -s "$MIMO_BASE/chat/completions" \
+            -H "Content-Type: application/json" \
+            -H "api-key: $KEY" \
+            -H "Authorization: Bearer $KEY" \
+            -d "$(cat <<EOF
+          {
+            "model": "mimo-v2.5-tts",
+            "modalities": ["text", "audio"],
+            "audio": {"voice": "${{ matrix.voice }}", "format": "wav"},
+            "messages": [
+              {"role": "user", "content": "Read the following text naturally and expressively:"},
+              {"role": "assistant", "content": "${{ matrix.text }}"}
+            ]
+          }
+          EOF
+          )" > response.json
+          python3 -c "
+          import sys, json, base64
+          with open('response.json') as f:
+              d = json.load(f)
+          audio = base64.b64decode(d['choices'][0]['message']['audio']['data'])
+          path = 'audio/${{ matrix.voice }}.wav'
+          with open(path, 'wb') as f:
+              f.write(audio)
+          print(f'Saved {path} ({len(audio)} bytes)')
+          "
+
+      - name: Upload ${{ matrix.voice }} artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.voice }}
+          path: audio/${{ matrix.voice }}.wav
+          retention-days: 90
