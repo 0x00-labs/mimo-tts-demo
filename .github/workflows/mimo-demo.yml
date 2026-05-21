@@ -11,6 +11,7 @@ permissions:
 env:
   MIMO_BASE: https://token-plan-sgp.xiaomimimo.com/v1
   BWS_PROJECT: df3e9d60-9921-4a25-b68d-b451012a3723
+  BWS_ACCESS_TOKEN: ${{ secrets.BWS_ACCESS_TOKEN }}
 
 jobs:
   tts:
