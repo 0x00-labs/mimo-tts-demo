@@ -41,7 +41,7 @@ jobs:
 
       - name: Install bws
         run: |
-          curl -fsSL https://github.com/bitwarden/sdk-sm/releases/download/bws-v1.1.1/bws-x86_64-unknown-linux-gnu-1.1.1.zip -o bws.zip
+          curl -fsSL https://github.com/bitwarden/sdk-sm/releases/download/bws-v2.0.0/bws-x86_64-unknown-linux-gnu-2.0.0.zip -o bws.zip
           sudo unzip -o bws.zip -d /usr/local/bin && rm bws.zip
 
       - name: Generate ${{ matrix.voice }} audio
